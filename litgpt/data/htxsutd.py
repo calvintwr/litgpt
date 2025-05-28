@@ -27,7 +27,7 @@ class ParquetDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        tokens = self.tokenizer.encode(self.df.iloc[idx]['problem'], eos=True)
+        tokens = self.tokenizer.encode(self.df.iloc[idx]['content'], eos=True)
         
         # tokens = self.df.iloc[idx]['tokens']  # adjust column name if needed
         # tokens = torch.tensor(tokens, dtype=torch.long)
