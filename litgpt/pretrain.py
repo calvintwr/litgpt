@@ -21,7 +21,7 @@ from typing_extensions import Literal
 from litgpt import Tokenizer
 from litgpt.args import EvalArgs, LogArgs, TrainArgs
 from litgpt.config import name_to_config
-from litgpt.data import DataModule, TinyLlama
+from litgpt.data import DataModule, TinyLlama, HTXSUTD
 from litgpt.model import GPT, Block, CausalSelfAttention, Config, LLaMAMLP
 from litgpt.utils import (
     CycleIterator,
@@ -41,6 +41,8 @@ from litgpt.utils import (
     save_config,
     save_hyperparameters,
 )
+
+PAD_ID = 128004
 
 
 def setup(
@@ -119,7 +121,8 @@ def setup(
             quit()
 
     hparams = capture_hparams()
-    data = TinyLlama() if data is None else data
+    # data = TinyLlama() if data is None else data
+    data = HTXSUTD() if data is None else data
 
     config = Config.from_name(model_name) if model_config is None else model_config
     precision = precision or get_default_supported_precision(training=True)
@@ -311,7 +314,7 @@ def fit(
         meta_model = GPT(model.config)
         x = torch.randint(0, 1, (train.micro_batch_size, meta_model.max_seq_length))
         model_fwd = lambda: meta_model(x)  # noqa: F821
-        model_loss = lambda y: chunked_cross_entropy(y, x, chunk_size=0)  # noqa: F821
+        model_loss = lambda y: chunked_cross_entropy(y, x, chunk_size=0, ignore_index=PAD_ID)  # noqa: F821
         measured_flops = measure_flops(meta_model, model_fwd, model_loss)
         fabric.print(f"Measured TFLOPs: {measured_flops * fabric.world_size / 1e12:.2f}")
         del meta_model, x
@@ -332,6 +335,7 @@ def fit(
     warmup_iters = train.warmup_iters(devices, num_nodes, max_iters, train_dataloader)
 
     for train_data in train_iterator:
+
         if state["iter_num"] >= max_iters:
             break
 
@@ -451,6 +455,7 @@ def get_dataloaders(
     data.connect(tokenizer=tokenizer, batch_size=train.micro_batch_size, max_seq_length=block_size)
     with fabric.rank_zero_first():
         data.prepare_data()
+    # print("SOMETHING")
     data.setup()
     train_dataloader = data.train_dataloader()
     val_dataloader = data.val_dataloader()
@@ -522,3 +527,8 @@ def validate_args(train: TrainArgs, eval: EvalArgs, initial_checkpoint_dir, resu
         issues.append("Can't provide both `--resume` and `--initial_checkpoint_dir`. Choose one.")
     if issues:
         raise ValueError("\n".join(issues))
+
+if __name__ == "__main__":
+    from jsonargparse import CLI
+
+    CLI(setup, as_positional=False)
