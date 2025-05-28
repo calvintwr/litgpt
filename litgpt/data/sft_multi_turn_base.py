@@ -1,9 +1,9 @@
 from typing import Callable, List, Optional, Union, TypedDict
 import torch
 from torch import Tensor
-from lit_gpt.datamodules.sft_dataset_base import SFTDataset
-from lit_gpt.tokenizer import Tokenizer
-from lit_gpt.prompts import PromptStyle
+from litgpt.data.base import SFTDataset
+from litgpt.tokenizer import Tokenizer
+from litgpt.prompts import PromptStyle
 
 
 class MultiTurnDataRow(TypedDict):
@@ -89,7 +89,10 @@ class SFTMultiTurnDataset(SFTDataset):
         all_input_ids = None
         all_labels = None
 
+        raw_token_count = 0
+        raw_plus_prompt_template = 0
         for i, turn_pair in enumerate(example):
+            raw_token_count += len(self.tokenizer.encode(turn_pair['instruction'] + turn_pair['output']))
             # To allow application of IGNORE_INDEX to ignore CE losses for prompts,
             # we construct both the prompt with output, and without output.
             # Then, we can "diff" the tokens later, and apply IGNORE_INDEX to the encoded prompts,
@@ -126,10 +129,12 @@ class SFTMultiTurnDataset(SFTDataset):
 
             encoded_prompt_and_response = self.tokenizer.encode(
                 prompt_and_response,
-                bos=add_bos,
+                bos=False,
                 eos=True,
                 max_length=self.max_seq_length,
             )
+
+            raw_plus_prompt_template += len(encoded_prompt_and_response)
 
             # The labels are the full prompt with response, but with the prompt masked out
             labels = encoded_prompt_and_response.clone()
@@ -183,9 +188,17 @@ class SFTMultiTurnDataset(SFTDataset):
             return {
                 'input_ids': torch.tensor([self.tokenizer.eos_id], dtype=torch.int64),
                 'labels': torch.tensor([self.ignore_index], dtype=torch.int64),
+                'token_counts': {
+                    'raw': raw_token_count,
+                    'raw_plus_prompt_template': raw_plus_prompt_template,
+                },
             }
 
         return {
             'input_ids': all_input_ids,
             'labels': all_labels,
+            'token_counts': {
+                'raw': raw_token_count,
+                'raw_plus_prompt_template': raw_plus_prompt_template,
+            },
         }
