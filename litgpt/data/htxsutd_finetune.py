@@ -8,7 +8,8 @@ from typing import List, Optional, Union, TypedDict, Literal
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from litgpt.data import DataModule, get_sft_collate_fn, SFTMultiTurnDataset
+from litgpt.data import DataModule, get_sft_collate_fn
+from litgpt.data.sft_multi_turn_base import SFTMultiTurnDataset
 from litgpt.prompts import PromptStyle
 from litgpt.tokenizer import Tokenizer
 
@@ -168,19 +169,3 @@ def format_dataset(dataset: List[UltraChatRow], include_multi_turn_conversations
         formatted.append(formatted_convo)
 
     return formatted
-
-
-foo = HTXSUTDFinetune()
-from litgpt import Tokenizer
-
-tokenizer = Tokenizer("/raid/longhorn/calvin/litgpt/tokenizers/llama3.1")
-
-foo.connect(batch_size=4, tokenizer=tokenizer)
-foo.setup()
-data = foo.train_dataloader()
-
-for d in data:
-    print(d)
-    input()
-
-foo.setup()
