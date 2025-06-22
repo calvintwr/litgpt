@@ -233,8 +233,8 @@ def fit(
     #     ConcatDataset([train_dataloader.dataset, val_dataloader.dataset])
     # )
     # model.max_seq_length = min(longest_seq_length, train.max_seq_length or float("inf"))
-    longest_seq_length = 2000
-    model.max_seq_length = 2000
+    longest_seq_length = 8192
+    model.max_seq_length = 8192
     fabric.print(
         f"The longest sequence length in the train data is {longest_seq_length}, the model's maximum sequence length is"
         f" {model.max_seq_length} and context length is {model.config.block_size}"
