@@ -224,10 +224,12 @@ def fit(
     optimizer = state["optimizer"]
     scheduler = state["scheduler"]
     tokenizer = Tokenizer(checkpoint_dir)
-    longest_seq_length, longest_seq_ix = get_longest_seq_length(
-        ConcatDataset([train_dataloader.dataset, val_dataloader.dataset])
-    )
-    model.max_seq_length = min(longest_seq_length, train.max_seq_length or float("inf"))
+    # longest_seq_length, longest_seq_ix = get_longest_seq_length(
+    #     ConcatDataset([train_dataloader.dataset, val_dataloader.dataset])
+    # )
+    # model.max_seq_length = min(longest_seq_length, train.max_seq_length or float("inf"))
+    longest_seq_length = 2000
+    model.max_seq_length = 2000
     fabric.print(
         f"The longest sequence length in the train data is {longest_seq_length}, the model's maximum sequence length is"
         f" {model.max_seq_length} and context length is {model.config.block_size}"
@@ -456,3 +458,9 @@ def validate_args(train: TrainArgs, eval: EvalArgs) -> None:
         issues.append(f"{__file__} requires either epochs or max_steps to be set. This is set in {train}")
     if issues:
         raise ValueError("\n".join(issues))
+
+
+if __name__ == "__main__":
+    from jsonargparse import CLI
+
+    CLI(setup, as_positional=False)

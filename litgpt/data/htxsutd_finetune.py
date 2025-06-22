@@ -4,14 +4,16 @@
 import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Union, TypedDict, Literal
+from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Dataset
 
 from litgpt.data import DataModule, get_sft_collate_fn
 from litgpt.data.sft_multi_turn_base import SFTMultiTurnDataset
 from litgpt.prompts import PromptStyle
 from litgpt.tokenizer import Tokenizer
+import pandas as pd
 
 TRAIN_KEY = "train_sft"
 VAL_KEY = "test_sft"  # should be val, but some dataset is test
@@ -31,8 +33,23 @@ class UltraChatMessage(TypedDict):
 
 class UltraChatRow(TypedDict):
     prompt: str
-    prompt_id: str
-    messages: List[UltraChatMessage]
+    unique_id: str
+    conversation: List[UltraChatMessage]
+    actual_num_turns: int
+
+
+def load_parquet(folder: Path, seed=42, shuffle=True):
+    # Get all *.parquet files in the folder (or "*.tokenized.parquet" if needed)
+    parquet_files = list(folder.glob("*.parquet"))  # or use "*.tokenized.parquet"
+
+    if len(parquet_files) == 0:
+        raise Exception(f"No files found in [{folder}]")
+
+    # Load all files into a single DataFrame
+    df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
+    if shuffle:
+        df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df
 
 
 @dataclass
@@ -51,7 +68,8 @@ class HTXSUTDFinetune(DataModule):
     """How many DataLoader processes to use for loading."""
     include_multiturn_conversations: bool = True
     """Whether to include multi-turn conversations in the dataset."""
-    repo_id: str = "HuggingFaceH4/ultrachat_200k"  # TODO: Change this when the dataset is up
+    # repo_id: str = "HuggingFaceH4/ultrachat_200k"  # TODO: Change this when the dataset is up
+    dataset_path: Path = Path("dataset/HTXSUTD-finetune")
     """The Hugging Face dataset repository ID from where to download the data."""
     access_token: Optional[str] = field(repr=False, default=os.getenv("HF_TOKEN"))
     """The Hugging Face API token to use for authentication. Can also be set through the
@@ -82,17 +100,18 @@ class HTXSUTDFinetune(DataModule):
         self.max_seq_length = -1 if max_seq_length is None else max_seq_length
 
     def prepare_data(self) -> None:
-        from datasets import load_dataset
+        # from datasets import load_dataset
 
-        load_dataset(self.repo_id, token=self.access_token)
+        # load_dataset(self.repo_id, token=self.access_token)
+        return True
 
     def setup(self, stage: str = "") -> None:
-        from datasets import load_dataset
+        # Create dataset
+        train_data = load_parquet(self.dataset_path, seed=self.seed)
+        train_data = format_dataset(train_data, include_multi_turn_conversations=True)
 
-        dataset = load_dataset(self.repo_id, token=self.access_token)
-
-        train_data = format_dataset(dataset[TRAIN_KEY], self.include_multiturn_conversations)
-        test_data = format_dataset(dataset[VAL_KEY], self.include_multiturn_conversations)
+        test_data = load_parquet(self.dataset_path, seed=self.seed)
+        test_data = format_dataset(test_data, include_multi_turn_conversations=True)
 
         train_data, test_data = list(train_data), list(test_data)
 
@@ -133,23 +152,23 @@ class HTXSUTDFinetune(DataModule):
         )
 
 
-def format_dataset(dataset: List[UltraChatRow], include_multi_turn_conversations: bool):
+def format_dataset(df: pd.DataFrame, include_multi_turn_conversations: bool):
     formatted = []
 
-    for entry in dataset:
+    for _, entry in df.iterrows():
         formatted_convo = []
-        convo = entry["messages"]
+        convo = entry["conversation"]
 
         # Each conversation is a flat list of user-assistant pairs.
         # So we iterate in 2-step manner
         for i in range(0, len(convo) - 1, 2):
             if convo[i]["role"] != "user":
                 print(
-                    f"WARN: UltraChat row with prompt_id[{entry['prompt_id']}] is corrupted. Expected role to be `user`, but is `{convo[i]['role']}` instead."
+                    f"WARN: UltraChat row with unique_id[{entry['unique_id']}] is corrupted. Expected role to be `user`, but is `{convo[i]['role']}` instead."
                 )
             if convo[i + 1]["role"] != "assistant":
                 print(
-                    f"WARN: UltraChat row with prompt_id[{entry['prompt_id']}] is corrupted. Expected role to be `assistant`, but is `{convo[i + 1]['role']}` instead."
+                    f"WARN: UltraChat row with unique_id[{entry['unique_id']}] is corrupted. Expected role to be `assistant`, but is `{convo[i + 1]['role']}` instead."
                 )
 
             formatted_sft_dict = {

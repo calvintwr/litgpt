@@ -819,27 +819,57 @@ def create_finetuning_performance_report(training_time, token_counts, device_typ
     return output
 
 
+# def select_sft_generate_example(eval, data):
+#     if eval.evaluate_example == "first":
+#         if len(data.test_dataset.data):
+#             instruction = data.test_dataset.data[0]["instruction"]
+#         else:
+#             instruction = data.train_dataset.data[0]["instruction"]
+
+#     elif eval.evaluate_example == "random":
+#         if len(data.test_dataset.data):
+#             random_idx = random.randint(0, len(data.test_dataset.data) - 1)
+#             instruction = data.test_dataset.data[random_idx]["instruction"]
+#         else:
+#             random_idx = random.randint(0, len(data.train_dataset.data) - 1)
+#             instruction = data.train_dataset.data[random_idx]["instruction"]
+
+#     elif isinstance(eval.evaluate_example, int):
+#         index = eval.evaluate_example
+#         if len(data.test_dataset.data) > index:
+#             instruction = data.test_dataset.data[index]["instruction"]
+#         elif len(data.train_dataset.data) > index:
+#             instruction = data.train_dataset.data[index]["instruction"]
+#         else:
+#             raise IndexError(f"Index {index} is out of range for both test and training datasets.")
+
+#     else:
+#         raise ValueError(f"Unknown evaluation example type: {eval.evaluate_example}")
+#     return instruction
+
+
+# SFT Multiturn dataset
 def select_sft_generate_example(eval, data):
     if eval.evaluate_example == "first":
         if len(data.test_dataset.data):
-            instruction = data.test_dataset.data[0]["instruction"]
+            instruction = data.test_dataset.data[0][0]["instruction"]
         else:
-            instruction = data.train_dataset.data[0]["instruction"]
+            instruction = data.train_dataset.data[0][0]["instruction"]
 
     elif eval.evaluate_example == "random":
         if len(data.test_dataset.data):
             random_idx = random.randint(0, len(data.test_dataset.data) - 1)
-            instruction = data.test_dataset.data[random_idx]["instruction"]
+            instruction = data.test_dataset.data[random_idx][0]["instruction"]
         else:
             random_idx = random.randint(0, len(data.train_dataset.data) - 1)
-            instruction = data.train_dataset.data[random_idx]["instruction"]
+            instruction = data.train_dataset.data[random_idx][0]["instruction"]
 
     elif isinstance(eval.evaluate_example, int):
         index = eval.evaluate_example
         if len(data.test_dataset.data) > index:
-            instruction = data.test_dataset.data[index]["instruction"]
+            instruction = data.test_dataset.data[index][0]["instruction"]
         elif len(data.train_dataset.data) > index:
-            instruction = data.train_dataset.data[index]["instruction"]
+            instruction = data.train_dataset.data[index][0]["instruction"]
         else:
             raise IndexError(f"Index {index} is out of range for both test and training datasets.")
 
