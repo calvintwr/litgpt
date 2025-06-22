@@ -14,7 +14,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 from torchmetrics import RunningMean
 
 from litgpt.args import EvalArgs, LogArgs, TrainArgs
-from litgpt.data import Alpaca, DataModule
+from litgpt.data import Alpaca, DataModule, HTXSUTDFinetune
 from litgpt.generate.base import generate
 from litgpt.model import GPT, Block, Config
 from litgpt.prompts import save_prompt_style
@@ -86,7 +86,8 @@ def setup(
     """
     checkpoint_dir = auto_download_checkpoint(model_name=checkpoint_dir, access_token=access_token)
     pprint(locals())
-    data = Alpaca() if data is None else data
+    # data = Alpaca() if data is None else data
+    data = HTXSUTDFinetune() if data is None else data
     devices = parse_devices(devices)
     out_dir = init_out_dir(out_dir)
 

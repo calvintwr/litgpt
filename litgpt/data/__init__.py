@@ -15,6 +15,7 @@ from litgpt.data.openwebtext import OpenWebText
 from litgpt.data.text_files import TextFiles
 from litgpt.data.tinyllama import TinyLlama
 from litgpt.data.htxsutd import HTXSUTD
+from litgpt.data.htxsutd_finetune import HTXSUTDFinetune
 from litgpt.data.tinystories import TinyStories
 from litgpt.data.sft_multi_turn_base import SFTMultiTurnDataset
 
@@ -38,4 +39,5 @@ __all__ = [
     "MicroLlama",
     "get_sft_collate_fn",
     "HTXSUTD",
+    "HTXSUTDFinetune",
 ]

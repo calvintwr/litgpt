@@ -42,7 +42,8 @@ from litgpt.utils import (
     save_hyperparameters,
 )
 
-PAD_ID = 128004
+# PAD_ID = 128004
+PAD_ID = 2
 
 
 def setup(
@@ -335,7 +336,6 @@ def fit(
     warmup_iters = train.warmup_iters(devices, num_nodes, max_iters, train_dataloader)
 
     for train_data in train_iterator:
-
         if state["iter_num"] >= max_iters:
             break
 
@@ -429,12 +429,14 @@ def validate(
     fabric: L.Fabric, model: nn.Module, val_dataloader: DataLoader, max_iters: int, verbose: bool = True
 ) -> torch.Tensor:
     fabric.barrier()
+    # print("Doing validate")
     if verbose:
         fabric.print("Validating ...")
     model.eval()
 
     losses = []
     for k, batch in enumerate(val_dataloader):
+        # print(k, batch)
         if k >= max_iters:
             break
         input_ids = batch[:, 0 : model.max_seq_length].contiguous().long()
@@ -527,6 +529,7 @@ def validate_args(train: TrainArgs, eval: EvalArgs, initial_checkpoint_dir, resu
         issues.append("Can't provide both `--resume` and `--initial_checkpoint_dir`. Choose one.")
     if issues:
         raise ValueError("\n".join(issues))
+
 
 if __name__ == "__main__":
     from jsonargparse import CLI

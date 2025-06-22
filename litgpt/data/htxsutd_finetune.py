@@ -13,8 +13,9 @@ from litgpt.prompts import PromptStyle
 from litgpt.tokenizer import Tokenizer
 
 TRAIN_KEY = "train_sft"
-VAL_KEY = "test_sft" # should be val, but some dataset is test
-PAD_ID = 128004 # LLAMA>3.1 pad id
+VAL_KEY = "test_sft"  # should be val, but some dataset is test
+PAD_ID = 128004  # LLAMA>3.1 and 3.2 pad id
+
 
 class PreparedUltraChat(TypedDict):
     train_dataset: SFTMultiTurnDataset
@@ -24,7 +25,7 @@ class PreparedUltraChat(TypedDict):
 
 class UltraChatMessage(TypedDict):
     content: str
-    role: Literal['user', 'assistant']
+    role: Literal["user", "assistant"]
 
 
 class UltraChatRow(TypedDict):
@@ -32,11 +33,12 @@ class UltraChatRow(TypedDict):
     prompt_id: str
     messages: List[UltraChatMessage]
 
+
 @dataclass
 class HTXSUTDFinetune(DataModule):
     """LIMA data module for supervised finetuning."""
 
-    mask_prompt: bool = False
+    mask_prompt: bool = True
     """Whether to mask the prompt section from the label (with ``ignore_index``)."""
     prompt_style: Union[str, PromptStyle] = "llama3"
     """The style to apply to instruction prompts. See `litgpt.prompts` for a list of available styles."""
@@ -48,7 +50,7 @@ class HTXSUTDFinetune(DataModule):
     """How many DataLoader processes to use for loading."""
     include_multiturn_conversations: bool = True
     """Whether to include multi-turn conversations in the dataset."""
-    repo_id: str = "HuggingFaceH4/ultrachat_200k" # TODO: Change this when the dataset is up
+    repo_id: str = "HuggingFaceH4/ultrachat_200k"  # TODO: Change this when the dataset is up
     """The Hugging Face dataset repository ID from where to download the data."""
     access_token: Optional[str] = field(repr=False, default=os.getenv("HF_TOKEN"))
     """The Hugging Face API token to use for authentication. Can also be set through the
@@ -90,7 +92,7 @@ class HTXSUTDFinetune(DataModule):
 
         train_data = format_dataset(dataset[TRAIN_KEY], self.include_multiturn_conversations)
         test_data = format_dataset(dataset[VAL_KEY], self.include_multiturn_conversations)
-        
+
         train_data, test_data = list(train_data), list(test_data)
 
         self.train_dataset = SFTMultiTurnDataset(
@@ -130,31 +132,29 @@ class HTXSUTDFinetune(DataModule):
         )
 
 
-def format_dataset(
-    dataset: List[UltraChatRow], include_multi_turn_conversations: bool
-):
+def format_dataset(dataset: List[UltraChatRow], include_multi_turn_conversations: bool):
     formatted = []
 
     for entry in dataset:
         formatted_convo = []
-        convo = entry['messages']
+        convo = entry["messages"]
 
         # Each conversation is a flat list of user-assistant pairs.
         # So we iterate in 2-step manner
         for i in range(0, len(convo) - 1, 2):
-            if convo[i]['role'] != 'user':
+            if convo[i]["role"] != "user":
                 print(
-                    f'WARN: UltraChat row with prompt_id[{entry["prompt_id"]}] is corrupted. Expected role to be `user`, but is `{convo[i]["role"]}` instead.'
+                    f"WARN: UltraChat row with prompt_id[{entry['prompt_id']}] is corrupted. Expected role to be `user`, but is `{convo[i]['role']}` instead."
                 )
-            if convo[i + 1]['role'] != 'assistant':
+            if convo[i + 1]["role"] != "assistant":
                 print(
-                    f'WARN: UltraChat row with prompt_id[{entry["prompt_id"]}] is corrupted. Expected role to be `assistant`, but is `{convo[i+1]["role"]}` instead.'
+                    f"WARN: UltraChat row with prompt_id[{entry['prompt_id']}] is corrupted. Expected role to be `assistant`, but is `{convo[i + 1]['role']}` instead."
                 )
 
             formatted_sft_dict = {
-                'instruction': convo[i]['content'],
-                'input': '',
-                'output': convo[i + 1]['content'],
+                "instruction": convo[i]["content"],
+                "input": "",
+                "output": convo[i + 1]["content"],
             }
 
             formatted_convo.append(formatted_sft_dict)
@@ -173,7 +173,7 @@ def format_dataset(
 foo = HTXSUTDFinetune()
 from litgpt import Tokenizer
 
-tokenizer = Tokenizer('/raid/longhorn/huangchen/models/Llama-3.1-8B-Instruct')
+tokenizer = Tokenizer("/raid/longhorn/calvin/litgpt/tokenizers/llama3.1")
 
 foo.connect(batch_size=4, tokenizer=tokenizer)
 foo.setup()
@@ -183,5 +183,4 @@ for d in data:
     print(d)
     input()
 
-foo.setup() 
-
+foo.setup()

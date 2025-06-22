@@ -13,7 +13,9 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
 
-PAD_ID = 128004
+# PAD_ID = 128004
+PAD_ID = 2
+
 
 class ParquetDataset(Dataset):
     def __init__(self, parquet_files, seq_length, tokenizer: Tokenizer):
@@ -26,9 +28,8 @@ class ParquetDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
+        tokens = self.tokenizer.encode(self.df.iloc[idx]["problem"], eos=True)
 
-        tokens = self.tokenizer.encode(self.df.iloc[idx]['content'], eos=True)
-        
         # tokens = self.df.iloc[idx]['tokens']  # adjust column name if needed
         # tokens = torch.tensor(tokens, dtype=torch.long)
 
@@ -37,11 +38,12 @@ class ParquetDataset(Dataset):
             pad = torch.full((self.seq_length + 1 - len(tokens),), fill_value=PAD_ID, dtype=torch.long)
             tokens = torch.cat([tokens, pad], dim=0)
         else:
-            tokens = tokens[:self.seq_length + 1]
+            tokens = tokens[: self.seq_length + 1]
 
-        print(tokens)
+        # print(tokens)
 
         return tokens
+
 
 @dataclass
 class HTXSUTD(DataModule):
@@ -50,7 +52,8 @@ class HTXSUTD(DataModule):
     Provides training and validation streaming dataloaders that return batches of tokens.
     """
 
-    data_path: Union[str, Path] = Path("data/")
+    # data_path: Union[str, Path] = Path("data/")
+    data_path: Union[str, Path] = Path("../../huangchen/Parquet_files")
     """The path to the data directory"""
     seed: int = 42
     """The random seed for shuffling the dataset."""
@@ -60,7 +63,8 @@ class HTXSUTD(DataModule):
     """Toggle for using Starcoder data."""
 
     batch_size: int = field(init=False, repr=False, default=1)
-    seq_length: int = field(init=False, repr=False, default=131072)
+    # seq_length: int = field(init=False, repr=False, default=131072)
+    seq_length: int = field(init=False, repr=False, default=4096)
 
     # def __init__(self, data_path = Path("data/")):
     #     self.data_path = data_path
@@ -91,9 +95,7 @@ class HTXSUTD(DataModule):
     def train_dataloader(self) -> DataLoader:
         # Create list of Parquet files (adjust as needed)
         parquet_files = [
-            os.path.join(self.train, f)
-            for f in os.listdir(self.train)
-            if f.endswith('tokenized.parquet')
+            os.path.join(self.train, f) for f in os.listdir(self.train) if f.endswith("tokenized.parquet")
         ]  # Replace with actual file paths
         # Create dataset
         dataset = ParquetDataset(parquet_files, seq_length=self.seq_length, tokenizer=self.tokenizer)
@@ -105,18 +107,15 @@ class HTXSUTD(DataModule):
             shuffle=True,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=True
+            drop_last=True,
         )
 
         return train_dataloader
 
     def val_dataloader(self) -> DataLoader:
-
         # Create list of Parquet files (adjust as needed)
         parquet_files = [
-            os.path.join(self.val, f)
-            for f in os.listdir(self.val)
-            if f.endswith('tokenized.parquet')
+            os.path.join(self.val, f) for f in os.listdir(self.val) if f.endswith("tokenized.parquet")
         ]  # Replace with actual file paths
 
         # Create dataset
@@ -129,7 +128,7 @@ class HTXSUTD(DataModule):
             shuffle=True,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=True
+            drop_last=True,
         )
 
         return val_dataloader
