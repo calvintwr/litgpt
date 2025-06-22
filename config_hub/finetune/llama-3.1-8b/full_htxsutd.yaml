@@ -47,7 +47,7 @@ train:
   lr_warmup_steps: 1000
 
   # Number of epochs to train on (type: Optional[int], default: 5)
-  epochs: 1
+  epochs: 5
 
   # Total number of tokens to train on (type: Optional[int], default: null)
   max_tokens:
