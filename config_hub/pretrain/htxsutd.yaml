@@ -106,7 +106,7 @@ num_nodes: 1
 
 # Optional path to the tokenizer dir that was used for preprocessing the dataset. Only some data
 # module require this. (type: Optional[Path], default: null)
-tokenizer_dir: /raid/longhorn/huangchen/models/Llama-3.1-8B-Instruct
+tokenizer_dir: /raid/longhorn/calvin/litgpt/tokenizers/llama3.1
 
 # The name of the logger to send metrics to. (type: Literal['wandb', 'tensorboard', 'csv'], default: tensorboard)
 logger_name: tensorboard
