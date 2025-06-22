@@ -63,6 +63,7 @@ def setup(
     logger_name: Literal["wandb", "tensorboard", "csv", "mlflow"] = "csv",
     seed: int = 1337,
     access_token: Optional[str] = None,
+    float32_matmul_precision: Literal["highest", "high", "medium"] = "high",
 ) -> None:
     """Finetune a model.
 
@@ -83,7 +84,11 @@ def setup(
         logger_name: The name of the logger to send metrics to.
         seed: The random seed to use for reproducibility.
         access_token: Optional API token to access models with restrictions.
+        float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
     """
+
+    torch.set_float32_matmul_precision(float32_matmul_precision)
+
     checkpoint_dir = auto_download_checkpoint(model_name=checkpoint_dir, access_token=access_token)
     pprint(locals())
     # data = Alpaca() if data is None else data
