@@ -163,12 +163,6 @@ class HTXSUTD(DataModule):
 
     def train_dataloader(self) -> DataLoader:
         dataframe = load_parquet(self.dataset_path, seed=self.seed, shuffle=self.shuffle)
-
-        print("=" * 80)
-        print(734586)
-        print(dataframe)
-        print("=" * 80)
-
         dataset = ParquetDataset(dataframe, seq_length=self.seq_length, tokenizer=self.tokenizer)
 
         # Create DataLoader

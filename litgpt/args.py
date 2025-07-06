@@ -2,7 +2,11 @@
 import math
 import warnings
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Literal
+from torch.distributed.fsdp.fully_sharded_data_parallel import CPUOffload, MixedPrecision, ShardingStrategy
+import torch
+
+_SHARDING_STRATEGY = Union[ShardingStrategy, Literal["FULL_SHARD", "SHARD_GRAD_OP", "NO_SHARD", "HYBRID_SHARD"]]
 
 
 @dataclass
@@ -102,3 +106,33 @@ class LogArgs:
     """Run name"""
     group: Optional[str] = None
     """Group name"""
+
+
+class FSDPArgs:
+    """FSDP arguments"""
+
+    sharding_strategy: _SHARDING_STRATEGY = ShardingStrategy.SHARD_GRAD_OP
+    """Sharding strategy. SHARD_GRAD_OP is the fastest but consumes 1x model parameter size more vram."""
+
+    activation_checkpointing: bool = False
+    """Turn on to save memory by recomputing gradients on backward. Defaults to wrapping only `Block`. This saves ~2.6x model parameter size's worth of vram."""
+
+    state_dict_type: Literal["full", "sharded"] = "full"
+    """To shard state dictionary or not. TODO: Check how much vram it saves."""
+
+    cpu_offload: bool = False
+    """Offload optimizer states to cpu. TODO: Check how much vram it saves."""
+
+    def __post_init__(self) -> None:
+        self._cpu_offload = CPUOffload(offload_params=self.cpu_offload)
+
+    def mixed_precision(self, precision: Literal["bf16-true", "bf16-mixed", "32-true", None]) -> int:
+        """Number of iterations to warm up the learning rate."""
+        if precision == "bf16-mixed":
+            return MixedPrecision(param_dtype=torch.bfloat16, reduce_dtype=torch.bfloat16, buffer_dtype=torch.float32)
+
+        if precision == "bf16-true":
+            return MixedPrecision(param_dtype=torch.bfloat16, reduce_dtype=torch.bfloat16, buffer_dtype=torch.bfloat16)
+
+        # FSDP with mixed_precision=None defaults to fp32
+        return None

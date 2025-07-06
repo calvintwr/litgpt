@@ -42,7 +42,7 @@ train:
   global_batch_size: 512
 
   # Number of samples per data-parallel rank (type: int, default: 4)
-  micro_batch_size: 4
+  micro_batch_size: 8
 
   # Number of iterations with learning rate warmup active (type: int, default: 2000)
   lr_warmup_steps: 2000

@@ -19,7 +19,7 @@ from torchmetrics.aggregation import RunningMean
 from typing_extensions import Literal
 
 from litgpt import Tokenizer
-from litgpt.args import EvalArgs, LogArgs, TrainArgs
+from litgpt.args import EvalArgs, LogArgs, TrainArgs, FSDPArgs
 from litgpt.config import name_to_config
 from litgpt.data import DataModule, TinyLlama, HTXSUTD
 from litgpt.model import GPT, Block, CausalSelfAttention, Config, LLaMAMLP
@@ -72,6 +72,7 @@ def setup(
     seed: int = 42,
     float32_matmul_precision: Literal["highest", "high", "medium"] = "high",
     pad_id: Optional[int] = None,
+    fsdp: FSDPArgs = FSDPArgs(),
 ):
     """Pretrain a model.
 
@@ -148,7 +149,16 @@ def setup(
     )
 
     if devices * num_nodes > 1:
-        strategy = FSDPStrategy(auto_wrap_policy={Block}, state_dict_type="full", sharding_strategy="HYBRID_SHARD")
+        # strategy = FSDPStrategy(auto_wrap_policy={Block}, state_dict_type="full", sharding_strategy="HYBRID_SHARD")
+
+        strategy = FSDPStrategy(
+            auto_wrap_policy={Block},
+            state_dict_type=fsdp.state_dict_type,
+            sharding_strategy=fsdp.sharding_strategy,
+            activation_checkpointing_policy={Block} if fsdp.activation_checkpointing else None,
+            mixed_precision=fsdp.mixed_precision(precision),
+            # cpu_offload=fsdp._cpu_offload, # TODO: Not working.
+        )
     else:
         strategy = "auto"
 
