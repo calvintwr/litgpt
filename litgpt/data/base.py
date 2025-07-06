@@ -15,6 +15,8 @@ from litgpt.tokenizer import Tokenizer
 class DataModule(LightningDataModule):
     """Base class for all data modules in LitGPT."""
 
+    seed: int
+
     @abstractmethod
     def connect(
         self, tokenizer: Optional[Tokenizer] = None, batch_size: int = 1, max_seq_length: Optional[int] = None

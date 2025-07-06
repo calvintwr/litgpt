@@ -94,6 +94,7 @@ def setup(
     pprint(locals())
     # data = Alpaca() if data is None else data
     data = HTXSUTDFinetune() if data is None else data
+    data.seed = seed
     devices = parse_devices(devices)
     out_dir = init_out_dir(out_dir)
 

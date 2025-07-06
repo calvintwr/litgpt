@@ -130,6 +130,7 @@ def setup(
     hparams = capture_hparams()
     # data = TinyLlama() if data is None else data
     data = HTXSUTD() if data is None else data
+    data.seed = seed
 
     config = Config.from_name(model_name) if model_config is None else model_config
     precision = precision or get_default_supported_precision(training=True)
@@ -262,7 +263,7 @@ def main(
     optimizer = instantiate_torch_optimizer(optimizer, model.parameters(), **extra_kwargs)
     optimizer = fabric.setup_optimizers(optimizer)
 
-    train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train, model.max_seq_length, seed)
+    train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train, model.max_seq_length)
     train_dataloader, val_dataloader = fabric.setup_dataloaders(train_dataloader, val_dataloader)
 
     if initial_checkpoint_dir:
@@ -497,10 +498,10 @@ def validate(
 
 
 def get_dataloaders(
-    fabric: L.Fabric, data: DataModule, tokenizer: Tokenizer, train: TrainArgs, block_size: int, seed: int
+    fabric: L.Fabric, data: DataModule, tokenizer: Tokenizer, train: TrainArgs, block_size: int
 ) -> Tuple[DataLoader, DataLoader]:
     fabric.print("Loading dataset...")
-    data.connect(seed=seed, tokenizer=tokenizer, batch_size=train.micro_batch_size, max_seq_length=block_size)
+    data.connect(tokenizer=tokenizer, batch_size=train.micro_batch_size, max_seq_length=block_size)
     with fabric.rank_zero_first():
         data.prepare_data()
 

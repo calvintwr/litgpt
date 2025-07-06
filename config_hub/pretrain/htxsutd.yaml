@@ -42,7 +42,7 @@ train:
   global_batch_size: 512
 
   # Number of samples per data-parallel rank (type: int, default: 4)
-  micro_batch_size: 8
+  micro_batch_size: 1
 
   # Number of iterations with learning rate warmup active (type: int, default: 2000)
   lr_warmup_steps: 2000
@@ -57,7 +57,7 @@ train:
   max_steps:
 
   # Limits the length of samples. Off by default (type: Optional[int], default: null)
-  max_seq_length: 2048
+  max_seq_length: 8192
 
   # Whether to tie the embedding weights with the language modeling head weights. (type: Optional[bool], default: False)
   tie_embeddings:
@@ -66,7 +66,7 @@ train:
   max_norm: 1.0
 
   #   (type: float, default: 4e-05)
-  min_lr: 4.0e-05
+  min_lr: 3e-05
 
 # Evaluation-related arguments. See ``litgpt.args.EvalArgs`` for details
 eval:
@@ -91,7 +91,7 @@ optimizer:
 
   init_args:
     #   (type: float, default: 0.001)
-    lr: 4e-4
+    lr: 3e-5
 
     #   (type: float, default: 0.01)
     weight_decay: 0.1
@@ -119,10 +119,10 @@ tokenizer_dir: checkpoints/meta-llama/Llama-3.1-8B-Instruct
 pad_id: 128004  
 
 # The name of the logger to send metrics to. (type: Literal['wandb', 'tensorboard', 'csv'], default: tensorboard)
-logger_name: tensorboard
+logger_name: 
 
 # The random seed to use for reproducibility. (type: int, default: 42)
 seed: 42
 
 fsdp:
-  activation_checkpointing: true
+  activation_checkpointing: false

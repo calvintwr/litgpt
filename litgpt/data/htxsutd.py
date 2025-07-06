@@ -135,7 +135,6 @@ class HTXSUTD(DataModule):
 
     def connect(
         self,
-        seed: int,
         tokenizer: Optional[Tokenizer] = None,
         batch_size: int = 1,
         max_seq_length: Optional[int] = None,
@@ -143,7 +142,6 @@ class HTXSUTD(DataModule):
         self.tokenizer = tokenizer
         self.batch_size = batch_size
         self.seq_length = max_seq_length + 1  # Increase by one because we need the next token as well
-        self.seed = seed
 
         if self.tokenizer is None:
             raise ValueError("Tokenizer is needed.")
