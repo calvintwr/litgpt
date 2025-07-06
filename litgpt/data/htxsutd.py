@@ -58,27 +58,6 @@ def load_parquet(folder: Path, seed: int, shuffle=True):
     return df
 
 
-# # TEMP function until we split the files
-# # TODO: Test code
-# def load_parquet_val_temp(folder: Path, seed: int, shuffle=True):
-#     # Get all *.parquet files in the folder
-#     parquet_files = list(folder.glob("*.parquet"))
-
-#     if len(parquet_files) == 0:
-#         raise Exception(f"No files found in [{folder}]")
-
-#     # Load all files into a single DataFrame
-#     # df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
-
-#     # TODO: Test code
-#     df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
-#     df = df.head(1000)
-
-#     if shuffle:
-#         df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
-#     return df
-
-
 class ParquetDataset(Dataset):
     def __init__(self, dataframe: pd.DataFrame, seq_length, tokenizer: Tokenizer):
         # Concatenate all parquet files into a single DataFrame
