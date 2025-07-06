@@ -107,8 +107,8 @@ class HTXSUTD(DataModule):
     def __post_init__(self):
         super().__init__()
         # Could be a remote path (s3://) or a local path
-        self.train_path = Path(str(self.dataset_path).rstrip("/") + "/train")
-        self.val_path = Path(str(self.dataset_path).rstrip("/") + "/validation")
+        self.train_path = self.dataset_path / "train"
+        self.val_path = self.dataset_path / "validation"
         self.required_paths = [self.train_path, self.val_path]
 
     def connect(
