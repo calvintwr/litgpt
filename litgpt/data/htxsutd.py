@@ -52,7 +52,6 @@ def load_parquet(folder: Path, seed: int, shuffle=True):
     df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
 
     if shuffle:
-        print("Shuffling")
         df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
     return df
 

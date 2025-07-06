@@ -123,3 +123,6 @@ logger_name: tensorboard
 
 # The random seed to use for reproducibility. (type: int, default: 42)
 seed: 42
+
+fsdp:
+  activation_checkpointing: true

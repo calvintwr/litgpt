@@ -108,6 +108,7 @@ class LogArgs:
     """Group name"""
 
 
+@dataclass
 class FSDPArgs:
     """FSDP arguments"""
 
