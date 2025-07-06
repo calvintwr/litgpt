@@ -48,7 +48,7 @@ def load_parquet(folder: Path, seed: int, shuffle=True):
         raise Exception(f"No files found in [{folder}]")
 
     # Load all files into a single DataFrame
-    df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
+    df = pd.concat([pd.read_parquet(file, engine="pyarrow") for file in parquet_files], ignore_index=True)
 
     # TODO: Test code
     # df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
