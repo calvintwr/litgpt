@@ -78,6 +78,9 @@ def main(
     model.clear_kv_cache()
 
     # print(tokenizer.decode(y))
+    print("=" * 80)
+    print("DECODED")
+    print("=" * 80)
     print(custom_decode(hf_tokenizer, y))
 
     tokens_generated = y.size(0) - prompt_length
