@@ -1,6 +1,6 @@
 # The name of the model to pretrain. Choose from names in ``litgpt.config``. Mutually exclusive with
 # ``model_config``. (type: Optional[str], default: null)
-model_name: tiny-llama-1.1b
+model_name: Llama-3.1-8B
 
 # A ``litgpt.Config`` object to define the model architecture. Mutually exclusive with
 # ``model_config``. (type: Optional[Config], default: null)
@@ -15,7 +15,7 @@ precision: bf16-mixed
 
 # Optional path to a checkpoint directory to initialize the model from.
 # Useful for continued pretraining. Mutually exclusive with ``resume``. (type: Optional[Path], default: null)
-initial_checkpoint_dir:
+initial_checkpoint_dir: checkpoints/meta-llama/Llama-3.1-8B-Instruct
 
 # Path to a checkpoint directory to resume from in case training was interrupted, or ``True`` to resume
 # from the latest checkpoint in ``out_dir``. An error will be raised if no checkpoint is found. Passing
@@ -23,9 +23,12 @@ initial_checkpoint_dir:
 # (type: Union[bool, Literal["auto"], Path], default: False)
 resume: false
 
-# Data-related arguments. If not provided, the default is ``litgpt.data.TinyLlama``.
-# data: litgpt.data.TinyLlama
-data: HTXSUTD
+# Data-related arguments. If not provided, the default is ``litgpt.data.Alpaca``.
+data:
+  class_path: litgpt.data.HTXSUTD
+  init_args:
+    # seed: 42 # we don't need this because we centralised it.
+    dataset_path: /raid/longhorn/htx-project/data/fineweb_filtered_output_combined
 
 # Training-related arguments. See ``litgpt.args.TrainArgs`` for details
 train:
@@ -107,7 +110,13 @@ num_nodes: 1
 # Optional path to the tokenizer dir that was used for preprocessing the dataset. Only some data
 # module require this. (type: Optional[Path], default: null)
 # tokenizer_dir: /raid/longhorn/calvin/litgpt/tokenizers/llama3.1
-tokenizer_dir: /raid/longhorn/calvin/litgpt/tokenizers/TinyLlama
+tokenizer_dir: checkpoints/meta-llama/Llama-3.1-8B-Instruct
+
+# If the tokenizer does not not have default pad token, define it here.
+# # TinyLlama does not have pad token, using <unk>. Not strictly correct
+# pad_id: 2
+# LLAMA>3.1 and 3.2 pad id. Its tokenizer does not automatically define it
+pad_id: 128004  
 
 # The name of the logger to send metrics to. (type: Literal['wandb', 'tensorboard', 'csv'], default: tensorboard)
 logger_name: tensorboard

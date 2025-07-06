@@ -13,14 +13,71 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
 
-# PAD_ID = 128004
-PAD_ID = 2
+
+def load_first_n_rows(parquet_path, n_rows=10000):
+    import pyarrow.parquet as pq
+
+    pf = pq.ParquetFile(parquet_path)
+
+    batches = []
+    total_rows = 0
+
+    for i in range(pf.num_row_groups):
+        rg_table = pf.read_row_group(i)
+        rg_df = rg_table.to_pandas()
+        rows_needed = n_rows - total_rows
+
+        if len(rg_df) > rows_needed:
+            batches.append(rg_df.iloc[:rows_needed])
+            break
+        else:
+            batches.append(rg_df)
+            total_rows += len(rg_df)
+
+        if total_rows >= n_rows:
+            break
+
+    return pd.concat(batches, ignore_index=True)
+
+
+def load_parquet(folder: Path, seed: int, shuffle=True):
+    # Get all *.parquet files in the folder
+    parquet_files = list(folder.glob("*.parquet"))
+
+    if len(parquet_files) == 0:
+        raise Exception(f"No files found in [{folder}]")
+
+    # Load all files into a single DataFrame
+    # df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
+    df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
+
+    if shuffle:
+        print("Shuffling")
+        df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df
+
+
+# TEMP function until we split the files
+def load_parquet_val_temp(folder: Path, seed: int, shuffle=True):
+    # Get all *.parquet files in the folder
+    parquet_files = list(folder.glob("*.parquet"))
+
+    if len(parquet_files) == 0:
+        raise Exception(f"No files found in [{folder}]")
+
+    # Load all files into a single DataFrame
+    # df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
+    df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
+    df = df.head(1000)
+    if shuffle:
+        df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df
 
 
 class ParquetDataset(Dataset):
-    def __init__(self, parquet_files, seq_length, tokenizer: Tokenizer):
+    def __init__(self, dataframe: pd.DataFrame, seq_length, tokenizer: Tokenizer):
         # Concatenate all parquet files into a single DataFrame
-        self.df = pd.concat([pd.read_parquet(file) for file in parquet_files])
+        self.df = dataframe
         self.seq_length = seq_length
         self.tokenizer = tokenizer
 
@@ -28,14 +85,14 @@ class ParquetDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        tokens = self.tokenizer.encode(self.df.iloc[idx]["problem"], eos=True)
+        tokens = self.tokenizer.encode(self.df.iloc[idx]["text"], eos=True)
 
         # tokens = self.df.iloc[idx]['tokens']  # adjust column name if needed
         # tokens = torch.tensor(tokens, dtype=torch.long)
 
         # Ensure tokens are at least seq_length + 1 (pad or truncate)
         if len(tokens) < self.seq_length + 1:
-            pad = torch.full((self.seq_length + 1 - len(tokens),), fill_value=PAD_ID, dtype=torch.long)
+            pad = torch.full((self.seq_length + 1 - len(tokens),), fill_value=self.tokenizer.pad_id, dtype=torch.long)
             tokens = torch.cat([tokens, pad], dim=0)
         else:
             tokens = tokens[: self.seq_length + 1]
@@ -52,36 +109,48 @@ class HTXSUTD(DataModule):
     Provides training and validation streaming dataloaders that return batches of tokens.
     """
 
-    # data_path: Union[str, Path] = Path("data/")
-    data_path: Union[str, Path] = Path("../../huangchen/Parquet_files")
+    dataset_path: Path = Path("dataset/HTXSUTD-pretrain")
     """The path to the data directory"""
-    seed: int = 42
-    """The random seed for shuffling the dataset."""
     num_workers: int = 8
     """How many DataLoader processes to use for loading."""
-    use_starcoder: bool = True
-    """Toggle for using Starcoder data."""
 
     batch_size: int = field(init=False, repr=False, default=1)
     # seq_length: int = field(init=False, repr=False, default=131072)
-    seq_length: int = field(init=False, repr=False, default=4096)
+    # 8192 should be enough given we don't pack the parquet files
+    seq_length: int = field(init=False, repr=False, default=8192)
 
-    # def __init__(self, data_path = Path("data/")):
-    #     self.data_path = data_path
+    tokenizer: Optional[Tokenizer] = None
+
+    shuffle: bool = True
 
     def __post_init__(self):
         super().__init__()
         # Could be a remote path (s3://) or a local path
-        self.train = str(self.data_path).rstrip("/") + "/train"
-        self.val = str(self.data_path).rstrip("/") + "/val"
+        # self.train = str(self.dataset_path).rstrip("/") + "/train"
+        # self.val = str(self.dataset_path).rstrip("/") + "/val"
+
+        # Temporarily use the same parquet.
+        self.train = str(self.dataset_path).rstrip("/")
+        self.val = str(self.dataset_path).rstrip("/")
         self.required_paths = [self.train, self.val]
 
     def connect(
-        self, tokenizer: Optional[Tokenizer] = None, batch_size: int = 1, max_seq_length: Optional[int] = None
+        self,
+        seed: int,
+        tokenizer: Optional[Tokenizer] = None,
+        batch_size: int = 1,
+        max_seq_length: Optional[int] = None,
     ) -> None:
         self.tokenizer = tokenizer
         self.batch_size = batch_size
         self.seq_length = max_seq_length + 1  # Increase by one because we need the next token as well
+        self.seed = seed
+
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer is needed.")
+
+        if self.tokenizer.pad_id is None:
+            raise ValueError("Tokenizer must have `pad_id`.")
 
     def prepare_data(self) -> None:
         for path in self.required_paths:
@@ -89,16 +158,18 @@ class HTXSUTD(DataModule):
                 raise FileNotFoundError(
                     "The data path for HTXSUTD is expected to be the directory containing these subdirectories:"
                     f" `train`, `val`. The directory {path} does not exist."
-                    " Set it via `--data.data_path=...`"
+                    " Set it via `--data.dataset_path=...`"
                 )
 
     def train_dataloader(self) -> DataLoader:
-        # Create list of Parquet files (adjust as needed)
-        parquet_files = [
-            os.path.join(self.train, f) for f in os.listdir(self.train) if f.endswith("tokenized.parquet")
-        ]  # Replace with actual file paths
-        # Create dataset
-        dataset = ParquetDataset(parquet_files, seq_length=self.seq_length, tokenizer=self.tokenizer)
+        dataframe = load_parquet(self.dataset_path, seed=self.seed, shuffle=self.shuffle)
+
+        print("=" * 80)
+        print(734586)
+        print(dataframe)
+        print("=" * 80)
+
+        dataset = ParquetDataset(dataframe, seq_length=self.seq_length, tokenizer=self.tokenizer)
 
         # Create DataLoader
         train_dataloader = DataLoader(
@@ -113,13 +184,10 @@ class HTXSUTD(DataModule):
         return train_dataloader
 
     def val_dataloader(self) -> DataLoader:
-        # Create list of Parquet files (adjust as needed)
-        parquet_files = [
-            os.path.join(self.val, f) for f in os.listdir(self.val) if f.endswith("tokenized.parquet")
-        ]  # Replace with actual file paths
+        dataframe = load_parquet_val_temp(self.dataset_path, seed=self.seed, shuffle=self.shuffle)
 
         # Create dataset
-        dataset = ParquetDataset(parquet_files, seq_length=self.seq_length, tokenizer=self.tokenizer)
+        dataset = ParquetDataset(dataframe, seq_length=self.seq_length, tokenizer=self.tokenizer)
 
         # Create DataLoader
         val_dataloader = DataLoader(

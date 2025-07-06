@@ -69,6 +69,16 @@ class Tokenizer:
             with open(config_path, encoding="utf-8") as fp:
                 self.apply_decoding_fix = "LlamaTokenizer" in json.load(fp)["tokenizer_class"]
 
+        # Pad token
+        pad_token_config = config.get("pad_token", None)
+        pad_token = (
+            pad_token_config
+            if pad_token_config is None or isinstance(pad_token_config, str)
+            else pad_token_config["content"]
+        )
+
+        self.pad_id = self.token_to_id(pad_token) if pad_token_config is not None else None
+
     @property
     def vocab_size(self) -> int:
         if self.backend == "huggingface":

@@ -17,6 +17,7 @@ import pandas as pd
 
 TRAIN_KEY = "train_sft"
 VAL_KEY = "test_sft"  # should be val, but some dataset is test
+# TODO: Fix up this PAD_ID stuff similar to what was done for pretrain.py
 PAD_ID = 128004  # LLAMA>3.1 and 3.2 pad id
 
 
@@ -48,7 +49,7 @@ def load_parquet(folder: Path, seed=42, shuffle=True):
     # Load all files into a single DataFrame
     df = pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
     if shuffle:
-        df.sample(frac=1, random_state=seed).reset_index(drop=True)
+        df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
     return df
 
 

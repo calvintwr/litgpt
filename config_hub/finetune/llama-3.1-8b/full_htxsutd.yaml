@@ -5,7 +5,7 @@ checkpoint_dir: checkpoints/meta-llama/Llama-3.1-8B-Instruct
 out_dir: out/finetune/full-llama-3.1-8b
 
 # The precision to use for finetuning. Possible choices: "bf16-true", "bf16-mixed", "32-true". (type: Optional[str], default: null)
-precision: bf16-true
+precision: bf16-mixed
 
 # How many devices/GPUs to use (type: Union[int, str], default: 1)
 devices: 8

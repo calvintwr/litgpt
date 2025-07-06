@@ -42,9 +42,6 @@ from litgpt.utils import (
     save_hyperparameters,
 )
 
-# PAD_ID = 128004
-PAD_ID = 2
-
 
 def setup(
     model_name: str,
@@ -74,6 +71,7 @@ def setup(
     logger_name: Literal["wandb", "tensorboard", "csv", "mlflow"] = "tensorboard",
     seed: int = 42,
     float32_matmul_precision: Literal["highest", "high", "medium"] = "high",
+    pad_id: Optional[int] = None,
 ):
     """Pretrain a model.
 
@@ -101,6 +99,7 @@ def setup(
         logger_name: The name of the logger to send metrics to.
         seed: The random seed to use for reproducibility.
         float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
+        pad_id: Specify the pad token, as it is often missing from tokenizers.
     """
 
     # float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
@@ -135,6 +134,7 @@ def setup(
     precision = precision or get_default_supported_precision(training=True)
     devices = parse_devices(devices)
     out_dir = init_out_dir(out_dir)
+
     # in case the dataset requires the Tokenizer
     tokenizer = Tokenizer(tokenizer_dir) if tokenizer_dir is not None else None
 
@@ -154,6 +154,31 @@ def setup(
 
     fabric = L.Fabric(devices=devices, num_nodes=num_nodes, strategy=strategy, precision=precision, loggers=[logger])
 
+    # PAD_ID -- we need this block of code because pad_ids in tokenizers are often broken.
+
+    # if no tokenizer, it could mean that the data is already tokenized. However, we still need pad_id
+    if tokenizer is None and pad_id is None:
+        raise ValueError("Need to specify `pad_id`, or provide the tokenizer for me to obtain from there.")
+
+    if tokenizer and tokenizer.pad_id is None and pad_id is None:
+        raise ValueError("Need to specify `pad_id` as none found in tokenizer.")
+
+    if tokenizer and tokenizer.pad_id:
+        # If the tokenizer has a pad_id, there is no reason for you to specify one. Most likely a mistake.
+        if pad_id:
+            raise ValueError(
+                f"Pad_id of [{tokenizer.pad_id}] found in tokenizer. But you also specified `pad_id`[{pad_id}]. Remove `pad_id`."
+            )
+
+        # If all good, we assign the tokenizer's pad_id to pad_id
+        fabric.print(f"Pad token id[{tokenizer.pad_id}] found in tokenizer.")
+        pad_id = tokenizer.pad_id
+
+    # If we are using a tokenizer, and it doesn't have a pad_id, we can assign it.
+    if tokenizer and tokenizer.pad_id is None:
+        fabric.print(f"No pad token found in tokenizer. Assigning `pad_id`[{pad_id}].")
+        tokenizer.pad_id = pad_id
+
     if torch.cuda.is_available() and devices > 1:
         check_nvlink_connectivity(fabric)
 
@@ -164,6 +189,7 @@ def setup(
         fabric.logger.log_hyperparams(hparams)
 
     main(
+        pad_id=pad_id,
         fabric=fabric,
         devices=devices,
         num_nodes=num_nodes,
@@ -182,6 +208,7 @@ def setup(
 
 
 def main(
+    pad_id: int,
     fabric: L.Fabric,
     devices: int,
     seed: int,
@@ -225,7 +252,7 @@ def main(
     optimizer = instantiate_torch_optimizer(optimizer, model.parameters(), **extra_kwargs)
     optimizer = fabric.setup_optimizers(optimizer)
 
-    train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train, model.max_seq_length)
+    train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train, model.max_seq_length, seed)
     train_dataloader, val_dataloader = fabric.setup_dataloaders(train_dataloader, val_dataloader)
 
     if initial_checkpoint_dir:
@@ -259,6 +286,7 @@ def main(
         _root_pre_forward(model._forward_module._orig_mod, model._forward_module._orig_mod, [], {})
 
     fit(
+        pad_id=pad_id,
         fabric=fabric,
         devices=devices,
         num_nodes=num_nodes,
@@ -293,6 +321,7 @@ def main(
 
 
 def fit(
+    pad_id: int,
     fabric: L.Fabric,
     devices: int,
     state: dict,
@@ -321,7 +350,7 @@ def fit(
         meta_model = GPT(model.config)
         x = torch.randint(0, 1, (train.micro_batch_size, meta_model.max_seq_length))
         model_fwd = lambda: meta_model(x)  # noqa: F821
-        model_loss = lambda y: chunked_cross_entropy(y, x, chunk_size=0, ignore_index=PAD_ID)  # noqa: F821
+        model_loss = lambda y: chunked_cross_entropy(y, x, chunk_size=0, ignore_index=pad_id)  # noqa: F821
         measured_flops = measure_flops(meta_model, model_fwd, model_loss)
         fabric.print(f"Measured TFLOPs: {measured_flops * fabric.world_size / 1e12:.2f}")
         del meta_model, x
@@ -458,12 +487,13 @@ def validate(
 
 
 def get_dataloaders(
-    fabric: L.Fabric, data: DataModule, tokenizer: Tokenizer, train: TrainArgs, block_size: int
+    fabric: L.Fabric, data: DataModule, tokenizer: Tokenizer, train: TrainArgs, block_size: int, seed: int
 ) -> Tuple[DataLoader, DataLoader]:
-    data.connect(tokenizer=tokenizer, batch_size=train.micro_batch_size, max_seq_length=block_size)
+    fabric.print("Loading dataset...")
+    data.connect(seed=seed, tokenizer=tokenizer, batch_size=train.micro_batch_size, max_seq_length=block_size)
     with fabric.rank_zero_first():
         data.prepare_data()
-    # print("SOMETHING")
+
     data.setup()
     train_dataloader = data.train_dataloader()
     val_dataloader = data.val_dataloader()

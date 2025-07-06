@@ -87,6 +87,7 @@ def setup(
         float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
     """
 
+    # float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
     torch.set_float32_matmul_precision(float32_matmul_precision)
 
     checkpoint_dir = auto_download_checkpoint(model_name=checkpoint_dir, access_token=access_token)
