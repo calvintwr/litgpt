@@ -4,7 +4,7 @@ import math
 import os
 import time
 from pathlib import Path
-from pprint import pprint
+import pprint
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import lightning as L
@@ -96,7 +96,6 @@ def setup(
 
     checkpoint_dir = auto_download_checkpoint(model_name=checkpoint_dir, access_token=access_token)
     hparams = capture_hparams()
-    pprint(locals())
     # data = Alpaca() if data is None else data
     data = HTXSUTDFinetune() if data is None else data
     data.seed = seed
@@ -164,6 +163,7 @@ def setup(
         main, devices, resume, seed, config, data, checkpoint_dir, out_dir, train, eval, optimizer, tokenizer, num_nodes
     )
 
+    fabric.print(pprint.pformat(hparams))
     if logger_name in ("tensorboard", "wandb", "mlflow"):
         fabric.logger.log_hyperparams(hparams)
 
