@@ -13,31 +13,45 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
 
-# TODO: Test code
-# def load_first_n_rows(parquet_path, n_rows=10000):
-#     import pyarrow.parquet as pq
 
-#     pf = pq.ParquetFile(parquet_path)
+# TODO: Test code to load less data
+# def load_parquet(folder: Path, seed: int, shuffle=True):
+#     # Get all *.parquet files in the folder
+#     parquet_files = list(folder.glob("*.parquet"))
 
-#     batches = []
-#     total_rows = 0
+#     if len(parquet_files) == 0:
+#         raise Exception(f"No files found in [{folder}]")
 
-#     for i in range(pf.num_row_groups):
-#         rg_table = pf.read_row_group(i)
-#         rg_df = rg_table.to_pandas()
-#         rows_needed = n_rows - total_rows
+#     def load_first_n_rows(parquet_path, n_rows=10000):
+#         import pyarrow.parquet as pq
 
-#         if len(rg_df) > rows_needed:
-#             batches.append(rg_df.iloc[:rows_needed])
-#             break
-#         else:
-#             batches.append(rg_df)
-#             total_rows += len(rg_df)
+#         pf = pq.ParquetFile(parquet_path)
 
-#         if total_rows >= n_rows:
-#             break
+#         batches = []
+#         total_rows = 0
 
-#     return pd.concat(batches, ignore_index=True)
+#         for i in range(pf.num_row_groups):
+#             rg_table = pf.read_row_group(i)
+#             rg_df = rg_table.to_pandas()
+#             rows_needed = n_rows - total_rows
+
+#             if len(rg_df) > rows_needed:
+#                 batches.append(rg_df.iloc[:rows_needed])
+#                 break
+#             else:
+#                 batches.append(rg_df)
+#                 total_rows += len(rg_df)
+
+#             if total_rows >= n_rows:
+#                 break
+
+#         return pd.concat(batches, ignore_index=True)
+
+#     df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
+
+#     if shuffle:
+#         df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+#     return df
 
 
 def load_parquet(folder: Path, seed: int, shuffle=True):
@@ -49,9 +63,6 @@ def load_parquet(folder: Path, seed: int, shuffle=True):
 
     # Load all files into a single DataFrame
     df = pd.concat([pd.read_parquet(file, engine="pyarrow") for file in parquet_files], ignore_index=True)
-
-    # TODO: Test code
-    # df = pd.concat([load_first_n_rows(file) for file in parquet_files], ignore_index=True)
 
     if shuffle:
         df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
