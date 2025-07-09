@@ -40,7 +40,7 @@ train:
   global_batch_size: 1024
 
   # Number of samples per data-parallel rank (type: int, default: 1)
-  micro_batch_size: 32
+  micro_batch_size: 64
 
   # Number of iterations with learning rate warmup active (type: int, default: 100)
   # We have 22,799,732 rows => 22,265 steps => 10% => ~2200
@@ -111,4 +111,4 @@ optimizer:
 # pad_id: 128004  
 
 fsdp:
-  activation_checkpointing: false
+  activation_checkpointing: true

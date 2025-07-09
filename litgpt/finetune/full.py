@@ -37,6 +37,7 @@ from litgpt.utils import (
     parse_devices,
     save_hyperparameters,
     select_sft_generate_example,
+    capture_hparams,
 )
 
 
@@ -94,6 +95,7 @@ def setup(
     torch.set_float32_matmul_precision(float32_matmul_precision)
 
     checkpoint_dir = auto_download_checkpoint(model_name=checkpoint_dir, access_token=access_token)
+    hparams = capture_hparams()
     pprint(locals())
     # data = Alpaca() if data is None else data
     data = HTXSUTDFinetune() if data is None else data
@@ -161,6 +163,9 @@ def setup(
     fabric.launch(
         main, devices, resume, seed, config, data, checkpoint_dir, out_dir, train, eval, optimizer, tokenizer, num_nodes
     )
+
+    if logger_name in ("tensorboard", "wandb", "mlflow"):
+        fabric.logger.log_hyperparams(hparams)
 
 
 def main(
