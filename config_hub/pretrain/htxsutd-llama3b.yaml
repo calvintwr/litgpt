@@ -75,7 +75,7 @@ train:
 # Evaluation-related arguments. See ``litgpt.args.EvalArgs`` for details
 eval:
   # Number of optimizer steps between evaluation calls (type: int, default: 1000)
-  interval: 100
+  interval: 1000
 
   # Number of tokens to generate (type: Optional[int], default: null)
   max_new_tokens:
@@ -118,7 +118,7 @@ num_nodes: 1
 pad_id: 128004  
 
 # The name of the logger to send metrics to. (type: Literal['wandb', 'tensorboard', 'csv'], default: tensorboard)
-logger_name: 
+logger_name: wandb
 
 # The random seed to use for reproducibility. (type: int, default: 42)
 seed: 42
