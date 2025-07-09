@@ -158,6 +158,9 @@ def setup(
             mixed_precision=fsdp.mixed_precision(precision),
             # cpu_offload=fsdp._cpu_offload, # TODO: Not working.
         )
+        # TODO: Try DDP again?
+        # from lightning.fabric.strategies import DDPStrategy
+        # strategy = DDPStrategy(precision=precision)
     else:
         strategy = "auto"
 
