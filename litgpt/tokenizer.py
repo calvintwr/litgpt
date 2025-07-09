@@ -19,6 +19,7 @@ class Tokenizer:
         self.use_bos = self.check_if_bos_token_used(checkpoint_dir)
         self.bos_id = None
         self.eos_id = None
+        self.pad_id = None
 
         # some checkpoints have both files, `.json` takes precedence
         if (vocabulary_path := checkpoint_dir / "tokenizer.json").is_file():
@@ -50,6 +51,8 @@ class Tokenizer:
                     self.bos_id = config.get("bos_token_id")
                 if self.eos_id is None:
                     self.eos_id = config.get("eos_token_id")
+                if self.pad_id is None:
+                    self.pad_id = config.get("pad_token_id")
 
         elif (vocabulary_path := checkpoint_dir / "tokenizer.model").is_file():
             from sentencepiece import SentencePieceProcessor
@@ -68,16 +71,6 @@ class Tokenizer:
         if (config_path := checkpoint_dir / "tokenizer_config.json").is_file():
             with open(config_path, encoding="utf-8") as fp:
                 self.apply_decoding_fix = "LlamaTokenizer" in json.load(fp)["tokenizer_class"]
-
-        # Pad token
-        pad_token_config = config.get("pad_token", None)
-        pad_token = (
-            pad_token_config
-            if pad_token_config is None or isinstance(pad_token_config, str)
-            else pad_token_config["content"]
-        )
-
-        self.pad_id = self.token_to_id(pad_token) if pad_token_config is not None else None
 
     @property
     def vocab_size(self) -> int:

@@ -7,7 +7,7 @@ out_dir: out/finetune/htx-sutd-tinyllama
 precision: bf16-mixed
 
 # How many devices/GPUs to use (type: Union[int, str], default: 1)
-devices: 2
+devices: 8
 
 # How many nodes to use. (type: int, default: 1)
 num_nodes: 1
@@ -66,7 +66,7 @@ train:
 
   #   (type: float, default: 6e-05)
   min_lr: 4e-5
-  
+
 # Evaluation-related arguments. See ``litgpt.args.EvalArgs`` for details
 eval:
   # Number of optimizer steps between evaluation calls (type: int, default: 600)
@@ -107,7 +107,8 @@ optimizer:
       - 0.95
 
 # If the tokenizer does not not have default pad token, define it here.
-# # TinyLlama does not have pad token, using <unk>. Not strictly correct
-pad_id: 0
 # LLAMA>3.1 and 3.2 pad id. Its tokenizer does not automatically define it
 # pad_id: 128004  
+
+fsdp:
+  activation_checkpointing: false

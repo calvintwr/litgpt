@@ -13,7 +13,7 @@ from lightning.fabric.strategies import FSDPStrategy
 from torch.utils.data import ConcatDataset, DataLoader
 from torchmetrics import RunningMean
 
-from litgpt.args import EvalArgs, LogArgs, TrainArgs
+from litgpt.args import EvalArgs, LogArgs, TrainArgs, FSDPArgs
 from litgpt.data import Alpaca, DataModule, HTXSUTDFinetune
 from litgpt.generate.base import generate
 from litgpt.model import GPT, Block, Config
@@ -65,6 +65,7 @@ def setup(
     access_token: Optional[str] = None,
     float32_matmul_precision: Literal["highest", "high", "medium"] = "high",
     pad_id: Optional[int] = None,
+    fsdp: FSDPArgs = FSDPArgs(),
 ) -> None:
     """Finetune a model.
 
@@ -116,10 +117,11 @@ def setup(
     if devices * num_nodes > 1:
         strategy = FSDPStrategy(
             auto_wrap_policy={Block},
-            activation_checkpointing_policy={Block},
-            state_dict_type="full",
-            limit_all_gathers=True,
-            cpu_offload=False,
+            state_dict_type=fsdp.state_dict_type,
+            sharding_strategy=fsdp.sharding_strategy,
+            activation_checkpointing_policy={Block} if fsdp.activation_checkpointing else None,
+            mixed_precision=fsdp.mixed_precision(precision),
+            # cpu_offload=fsdp._cpu_offload, # TODO: Not working.
         )
     else:
         strategy = "auto"
@@ -137,9 +139,9 @@ def setup(
     if tokenizer and tokenizer.pad_id is None and pad_id is None:
         raise ValueError("Need to specify `pad_id` as none found in tokenizer.")
 
-    if tokenizer and tokenizer.pad_id:
+    if tokenizer and isinstance(tokenizer.pad_id, int):
         # If the tokenizer has a pad_id, there is no reason for you to specify one. Most likely a mistake.
-        if pad_id:
+        if isinstance(pad_id, int) and tokenizer.pad_id != pad_id:
             raise ValueError(
                 f"Pad_id of [{tokenizer.pad_id}] found in tokenizer. But you also specified `pad_id`[{pad_id}]. Remove `pad_id`."
             )

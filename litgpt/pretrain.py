@@ -150,8 +150,6 @@ def setup(
     )
 
     if devices * num_nodes > 1:
-        # strategy = FSDPStrategy(auto_wrap_policy={Block}, state_dict_type="full", sharding_strategy="HYBRID_SHARD")
-
         strategy = FSDPStrategy(
             auto_wrap_policy={Block},
             state_dict_type=fsdp.state_dict_type,
@@ -174,9 +172,9 @@ def setup(
     if tokenizer and tokenizer.pad_id is None and pad_id is None:
         raise ValueError("Need to specify `pad_id` as none found in tokenizer.")
 
-    if tokenizer and tokenizer.pad_id:
+    if tokenizer and isinstance(tokenizer.pad_id, int):
         # If the tokenizer has a pad_id, there is no reason for you to specify one. Most likely a mistake.
-        if pad_id:
+        if isinstance(pad_id, int) and tokenizer.pad_id != pad_id:
             raise ValueError(
                 f"Pad_id of [{tokenizer.pad_id}] found in tokenizer. But you also specified `pad_id`[{pad_id}]. Remove `pad_id`."
             )
