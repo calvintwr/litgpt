@@ -31,7 +31,7 @@ data:
 # Training-related arguments. See ``litgpt.args.TrainArgs`` for details
 train:
   # Number of optimizer steps between saving checkpoints (type: Optional[int], default: 1000)
-  save_interval: 1000
+  save_interval: 414 # One checkpoint per epoch
 
   # Number of iterations between logging calls (type: int, default: 1)
   log_interval: 1
@@ -43,8 +43,8 @@ train:
   micro_batch_size: 64
 
   # Number of iterations with learning rate warmup active (type: int, default: 100)
-  # We have 22,799,732 rows => 22,265 steps => 10% => ~2200
-  lr_warmup_steps: 2200
+  # We have 423,938 rows => 414 steps => 2070 steps (5 epochs) => 10% => ~200
+  lr_warmup_steps: 200
 
   # Number of epochs to train on (type: Optional[int], default: 5)
   epochs: 5
