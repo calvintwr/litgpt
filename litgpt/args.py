@@ -127,7 +127,7 @@ class FSDPArgs:
     def __post_init__(self) -> None:
         self._cpu_offload = CPUOffload(offload_params=self.cpu_offload)
 
-    def mixed_precision(self, precision: Literal["bf16-true", "bf16-mixed", "32-true", None]) -> int:
+    def mixed_precision(self, precision: Literal["bf16-true", "bf16-mixed", "32-true", None]):
         """Number of iterations to warm up the learning rate."""
         if precision == "bf16-mixed":
             return MixedPrecision(param_dtype=torch.bfloat16, reduce_dtype=torch.bfloat16, buffer_dtype=torch.float32)
