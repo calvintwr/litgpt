@@ -64,6 +64,7 @@ def setup(
     seed: int = 1337,
     access_token: Optional[str] = None,
     float32_matmul_precision: Literal["highest", "high", "medium"] = "high",
+    pad_id: Optional[int] = None,
 ) -> None:
     """Finetune a model.
 
@@ -85,6 +86,7 @@ def setup(
         seed: The random seed to use for reproducibility.
         access_token: Optional API token to access models with restrictions.
         float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
+        pad_id: Specify the pad token, as it is often missing from tokenizers.
     """
 
     # float32_matmul_precision: Optimise matmul. By default this is "highest", whereas "high" trades off some precision with more speed. See: https://pytorch.org/docs/stab
@@ -124,10 +126,39 @@ def setup(
 
     fabric = L.Fabric(devices=devices, num_nodes=num_nodes, strategy=strategy, precision=precision, loggers=logger)
 
+    tokenizer = Tokenizer(checkpoint_dir)
+
+    # PAD_ID -- we need this block of code because pad_ids in tokenizers are often broken.
+
+    # if no tokenizer, it could mean that the data is already tokenized. However, we still need pad_id
+    if tokenizer is None and pad_id is None:
+        raise ValueError("Need to specify `pad_id`, or provide the tokenizer for me to obtain from there.")
+
+    if tokenizer and tokenizer.pad_id is None and pad_id is None:
+        raise ValueError("Need to specify `pad_id` as none found in tokenizer.")
+
+    if tokenizer and tokenizer.pad_id:
+        # If the tokenizer has a pad_id, there is no reason for you to specify one. Most likely a mistake.
+        if pad_id:
+            raise ValueError(
+                f"Pad_id of [{tokenizer.pad_id}] found in tokenizer. But you also specified `pad_id`[{pad_id}]. Remove `pad_id`."
+            )
+
+        # If all good, we assign the tokenizer's pad_id to pad_id
+        fabric.print(f"Pad token id[{tokenizer.pad_id}] found in tokenizer.")
+        pad_id = tokenizer.pad_id
+
+    # If we are using a tokenizer, and it doesn't have a pad_id, we can assign it.
+    if tokenizer and tokenizer.pad_id is None:
+        fabric.print(f"No pad token found in tokenizer. Assigning `pad_id`[{pad_id}].")
+        tokenizer.pad_id = pad_id
+
     if torch.cuda.is_available() and devices > 1:
         check_nvlink_connectivity(fabric)
 
-    fabric.launch(main, devices, resume, seed, config, data, checkpoint_dir, out_dir, train, eval, optimizer, num_nodes)
+    fabric.launch(
+        main, devices, resume, seed, config, data, checkpoint_dir, out_dir, train, eval, optimizer, tokenizer, num_nodes
+    )
 
 
 def main(
@@ -142,11 +173,11 @@ def main(
     train: TrainArgs,
     eval: EvalArgs,
     optimizer: Union[str, Dict],
+    tokenizer: Tokenizer,
     num_nodes: int = 1,
 ) -> None:
     validate_args(train, eval)
 
-    tokenizer = Tokenizer(checkpoint_dir)
     train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train)
     steps_per_epoch = len(train_dataloader) // train.gradient_accumulation_iters(devices, num_nodes)
     lr_max_steps = min(train.epochs * steps_per_epoch, (train.max_steps or float("inf")))
@@ -231,16 +262,26 @@ def fit(
     optimizer = state["optimizer"]
     scheduler = state["scheduler"]
     tokenizer = Tokenizer(checkpoint_dir)
-    # longest_seq_length, longest_seq_ix = get_longest_seq_length(
-    #     ConcatDataset([train_dataloader.dataset, val_dataloader.dataset])
-    # )
-    # model.max_seq_length = min(longest_seq_length, train.max_seq_length or float("inf"))
-    longest_seq_length = 8192
-    model.max_seq_length = 8192
-    fabric.print(
-        f"The longest sequence length in the train data is {longest_seq_length}, the model's maximum sequence length is"
-        f" {model.max_seq_length} and context length is {model.config.block_size}"
-    )
+
+    if train.max_seq_length:
+        fabric.print(
+            f"`train.max_seq_length` of {train.max_seq_length} is set."
+            f" Skipping step of inspecting dataset for the longest sequence length."
+            f" If you want to automatically find optimal max sequence length, unset `train.max_seq_length`."
+        )
+        longest_seq_length = train.max_seq_length
+        model.max_seq_length = train.max_seq_length
+
+    else:
+        longest_seq_length, longest_seq_ix = get_longest_seq_length(
+            ConcatDataset([train_dataloader.dataset, val_dataloader.dataset])
+        )
+        model.max_seq_length = min(longest_seq_length, train.max_seq_length or float("inf"))
+
+        fabric.print(
+            f"The longest sequence length in the train data is {longest_seq_length}, the model's maximum sequence length is"
+            f" {model.max_seq_length} and context length is {model.config.block_size}"
+        )
 
     token_counts = {
         "raw_tokens": torch.tensor(0, device=fabric.device, dtype=torch.long),

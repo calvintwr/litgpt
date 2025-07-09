@@ -15,10 +15,8 @@ from litgpt.prompts import PromptStyle
 from litgpt.tokenizer import Tokenizer
 import pandas as pd
 
-TRAIN_KEY = "train_sft"
-VAL_KEY = "test_sft"  # should be val, but some dataset is test
-# TODO: Fix up this PAD_ID stuff similar to what was done for pretrain.py
-PAD_ID = 128004  # LLAMA>3.1 and 3.2 pad id
+TRAIN_KEY = "train"
+VAL_KEY = "validation"  # should be val, but some dataset is test
 
 
 class PreparedUltraChat(TypedDict):
@@ -100,7 +98,14 @@ class HTXSUTDFinetune(DataModule):
         self.batch_size = batch_size
         self.max_seq_length = -1 if max_seq_length is None else max_seq_length
 
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer is needed.")
+
+        if self.tokenizer.pad_id is None:
+            raise ValueError("Tokenizer must have `pad_id`.")
+
     def prepare_data(self) -> None:
+        # TODO: We are loading from local for now. Write this up if dataset is published on HF
         # from datasets import load_dataset
 
         # load_dataset(self.repo_id, token=self.access_token)
@@ -108,10 +113,10 @@ class HTXSUTDFinetune(DataModule):
 
     def setup(self, stage: str = "") -> None:
         # Create dataset
-        train_data = load_parquet(self.dataset_path, seed=self.seed)
+        train_data = load_parquet(self.dataset_path / TRAIN_KEY, seed=self.seed)
         train_data = format_dataset(train_data, include_multi_turn_conversations=True)
 
-        test_data = load_parquet(self.dataset_path, seed=self.seed)
+        test_data = load_parquet(self.dataset_path / VAL_KEY, seed=self.seed)
         test_data = format_dataset(test_data, include_multi_turn_conversations=True)
 
         train_data, test_data = list(train_data), list(test_data)
@@ -140,7 +145,11 @@ class HTXSUTDFinetune(DataModule):
             shuffle=True,
             generator=torch.Generator().manual_seed(self.seed),
             num_workers=self.num_workers,
-            collate_fn=get_sft_collate_fn(max_seq_length=self.max_seq_length, ignore_index=PAD_ID, pad_id=PAD_ID),
+            collate_fn=get_sft_collate_fn(
+                max_seq_length=self.max_seq_length,
+                ignore_index=self.ignore_index,
+                pad_id=self.tokenizer.pad_id,
+            ),
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -149,7 +158,11 @@ class HTXSUTDFinetune(DataModule):
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
-            collate_fn=get_sft_collate_fn(max_seq_length=self.max_seq_length, ignore_index=PAD_ID, pad_id=PAD_ID),
+            collate_fn=get_sft_collate_fn(
+                max_seq_length=self.max_seq_length,
+                ignore_index=self.ignore_index,
+                pad_id=self.tokenizer.pad_id,
+            ),
         )
 
 
