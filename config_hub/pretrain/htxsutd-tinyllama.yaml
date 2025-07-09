@@ -112,8 +112,6 @@ devices: auto
 num_nodes: 1
 
 # If the tokenizer does not not have default pad token, define it here.
-# # TinyLlama does not have pad token, using <unk>. Not strictly correct.
-pad_id: 0
 # LLAMA>3.1 and 3.2 pad id. Its tokenizer does not automatically define it
 # pad_id: 128004  
 
