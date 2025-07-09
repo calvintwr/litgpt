@@ -769,3 +769,9 @@ def convert_hf_checkpoint(
                 copy_fn(sd, hf_weights, saver=saver, dtype=dtype, debug_mode=debug_mode)
         print(f"Saving converted checkpoint to {checkpoint_dir}")
         saver.save(sd)
+
+
+if __name__ == "__main__":
+    from jsonargparse import CLI
+
+    CLI(convert_hf_checkpoint)

@@ -504,3 +504,9 @@ def convert_lit_checkpoint(checkpoint_dir: Path, output_dir: Path) -> None:
         copy_fn(sd, lit_weights, saver=saver)
         gc.collect()
         saver.save(sd)
+
+
+if __name__ == "__main__":
+    from jsonargparse import CLI
+
+    CLI(convert_lit_checkpoint)
