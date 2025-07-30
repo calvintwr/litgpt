@@ -40,7 +40,7 @@ train:
   global_batch_size: 256
 
   # Number of samples per data-parallel rank (type: int, default: 1)
-  micro_batch_size: 2
+  micro_batch_size: 8
 
   # Number of iterations with learning rate warmup active (type: int, default: 100)
   # We have 423,938 rows / 256 global bs => 1,656 steps => 8280 steps (5 epochs) => 10% => ~800
