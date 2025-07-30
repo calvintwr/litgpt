@@ -22,4 +22,6 @@ Note: We need to use `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` otherwise it will e
 
 ```bash
 WANDB_PROJECT=HTX_SUTD WANDB_NAME=1b-finetune-run1  python -m litgpt.finetune.full --config config_hub/finetune/htx-sutd/full-htxsutd-tinyllama.yaml
+
+WANDB_PROJECT=HTX_SUTD WANDB_NAME=3b-finetune-run1 python -m litgpt.finetune.full --config config_hub/finetune/htx-sutd/full-htxsutd-llama3b.yaml
 ```
