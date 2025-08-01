@@ -10,6 +10,8 @@ WANDB_PROJECT=HTX_SUTD WANDB_NAME=8b-test-run python -m litgpt.finetune.full --c
 WANDB_PROJECT=HTX_SUTD WANDB_NAME=1b-pretrain-run1 python -m litgpt.pretrain --config config_hub/pretrain/htxsutd-tinyllama.yaml
 
 WANDB_PROJECT=HTX_SUTD WANDB_NAME=3b-pretrain-run1 python -m litgpt.pretrain --config config_hub/pretrain/htxsutd-llama3b.yaml
+
+WANDB_PROJECT=HTX_SUTD WANDB_NAME=8b-pretrain-run1 python -m litgpt.pretrain --config config_hub/pretrain/htxsutd-llama8b.yaml
 ```
 
 ### Conversion to checkpoint for finetuning:
